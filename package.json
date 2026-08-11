@@ -7,7 +7,9 @@
     "start": "node src/server.js",
     "generate": "node src/render.js",
     "generate:all": "node src/render.js all",
-    "list": "node src/render.js list"
+    "list": "node src/render.js list",
+    "seed:admin": "node scripts/seed-admin-data.js",
+    "test": "node --test test"
   },
   "dependencies": {
     "@napi-rs/canvas": "^1.0.5",
