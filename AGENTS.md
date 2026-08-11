@@ -24,7 +24,8 @@ node src/render.js all
 ## Architecture
 
 - `src/template.html` — HTML template with `{{placeholder}}` fields + signature/stamp overlay
-- `src/lib/` — Shared modules: `paths`, `slug`, `html`, `template`, `customers`, `pdf`, `stamp`
+- `src/lib/` — Shared modules: `paths`, `slug`, `html`, `template`, `customers`, `pdf`, `stamp`, `adminCatalog`, `adminBridge`, `locationId`
+- `data/admin/` — Offline v1/v2 province snapshots + legacy bridge; cutover `2025-07-01` (see `kb/admin-catalog.md`)
 - `src/lib/stamp.js` — In-memory red stamp (`@napi-rs/canvas`) + load signatory assets
 - `src/render.js` — Thin CLI + re-export facade over `src/lib/*`
 - `src/fields.js` — Field metadata + empty-field detection (shared by API/GUI)
@@ -37,7 +38,7 @@ node src/render.js all
 
 ### Stamping (Phase 3)
 
-On each generate, `loadSignatory('default')` builds a red circular stamp in RAM and injects it (plus optional signature PNG) as `data:image/png;base64,...` into the HTML before Puppeteer prints. Rendered stamps are never written under `output/`. Edit `data/signatories/default.json` / `signature.png` to customize (see `data/signatories/README.md`).
+On each generate, `loadSignatory(data.location_id || 'default')` builds a red circular stamp in RAM and injects it (plus optional signature PNG) as `data:image/png;base64,...` into the HTML before Puppeteer prints. Signatory JSON is keyed by sanitized `location_id` (exact → parent → `default`). Rendered stamps are never written under `output/`. Edit `data/signatories/default.json` / `signature.png` to customize (see `data/signatories/README.md`).
 
 ### API (local)
 
@@ -46,6 +47,10 @@ On each generate, `loadSignatory('default')` builds a red circular stamp in RAM 
 - `GET /api/customers/:name` — full `info.json` + `_empty`
 - `PUT /api/customers/:name` — save allowed fields into `info.json`
 - `POST /api/customers/:name/print` — save + render PDF, return `/output/...` URL
+- `GET /api/admin/catalog` — resolve v1/v2 from ĐK date (or `adminCatalog` override)
+- `GET /api/admin/provinces|districts|wards` — offline picker data by catalog
+- `GET /api/admin/bridge/from-legacy` — legacy ward → new ward candidates
+- `GET /api/admin/build-location-id` — build versioned `location_id` from codes
 
 ## Adding a new customer
 
@@ -56,6 +61,10 @@ On each generate, `loadSignatory('default')` builds a red circular stamp in RAM 
 Customer folder name is slugified from the name (no diacritics, lowercase, underscores).
 
 Canonical subject field key is `chuThe` (not `ownerType`). Older files with `ownerType` still render via a read fallback.
+
+## Knowledge base
+
+- `kb/INDEX.md` — durable runbooks (schema, stamping, admin catalog, decisions)
 
 ## Key constraints
 

@@ -20,7 +20,16 @@ data/signatories/
 2. Parent locations (`v1_01-005.json`, then `v1_01.json`)
 3. `default.json`
 
-Filename convention: replace `:` with `_` — `v1:01-005` → `v1_01-005.json`.
+**Filename convention** (Windows-safe): replace every `:` with `_` in the `location_id`:
+
+| `location_id` | JSON file on disk |
+|---|---|
+| `v1:01-005` | `v1_01-005.json` |
+| `v1:01-005-00166` | `v1_01-005-00166.json` |
+| `v2:01-00166` | `v2_01-00166.json` |
+| `default` | `default.json` |
+
+Implementation: `locationIdToFilename()` in `src/lib/stamp.js`. Never use raw `:` in filenames.
 
 ## Replace the signature
 
