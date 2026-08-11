@@ -12,7 +12,7 @@ const path = require('path');
 const { ROOT_DIR } = require('./lib/paths');
 const { listCustomers, loadInfo, saveInfo } = require('./lib/customers');
 const { generatePdf } = require('./lib/pdf');
-const { FIELDS, SECTIONS, collectEmpty } = require('./fields');
+const { FIELDS, SECTIONS, EXTRA_SAVE_KEYS, collectEmpty } = require('./fields');
 
 const app = express();
 app.use(express.json({ limit: '1mb' }));
@@ -36,7 +36,7 @@ function requireCustomer(req, res) {
 }
 
 function mergeFields(data, body) {
-  const allowed = new Set(Object.keys(FIELDS));
+  const allowed = new Set([...Object.keys(FIELDS), ...EXTRA_SAVE_KEYS]);
   let changed = false;
   for (const [key, value] of Object.entries(body || {})) {
     if (!allowed.has(key)) continue;

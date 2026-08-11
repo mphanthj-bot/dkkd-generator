@@ -35,7 +35,8 @@ async function generatePdf(customerName) {
   }
 
   const data = loadInfo(path.basename(customerDir));
-  const signatory = loadSignatory('default');
+  const locationKey = data.location_id || 'default';
+  const signatory = await loadSignatory(locationKey);
   const template = loadTemplate();
   const html = fillTemplate(template, data, signatory);
 

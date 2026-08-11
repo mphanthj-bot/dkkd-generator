@@ -40,6 +40,9 @@ const SECTIONS = [
 
 const DATE_PARTS = ['ngayDK', 'thangDK', 'namDK'];
 
+// Persisted via API save/print but not shown as certificate form fields.
+const EXTRA_SAVE_KEYS = ['location_id', 'adminCatalog'];
+
 function isEmpty(value) {
   if (value === null || value === undefined) return true;
   if (Array.isArray(value)) return value.length === 0;
@@ -74,4 +77,4 @@ function collectEmpty(data) {
   return empty;
 }
 
-module.exports = { FIELDS, SECTIONS, DATE_PARTS, isEmpty, effectiveValue, collectEmpty };
+module.exports = { FIELDS, SECTIONS, DATE_PARTS, EXTRA_SAVE_KEYS, isEmpty, effectiveValue, collectEmpty };
