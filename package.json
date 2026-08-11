@@ -9,6 +9,7 @@
     "generate:all": "node src/render.js all",
     "list": "node src/render.js list",
     "seed:admin": "node scripts/seed-admin-data.js",
+    "seed:industries": "node scripts/seed-industries.js",
     "test": "node --test test/*.test.js"
   },
   "dependencies": {

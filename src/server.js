@@ -1,16 +1,19 @@
 // Local web server + API for the DKHD filling GUI.
 //   npm start            → http://localhost:3000
 //   GET  /api/customers          list customers with empty-field counts
+//   POST /api/customers          create blank profile { hoTen?, tenHKD? }
 //   GET  /api/fields             field metadata for the form
 //   GET  /api/customers/:name    full info + which fields are empty
 //   PUT  /api/customers/:name    save filled fields into info.json
 //   POST /api/customers/:name/print  save + render PDF, return its URL
+//   GET  /api/industries         search VSIC cấp-4 + tax notes
+//   GET  /api/industries/:code   one industry + tax
 
 const express = require('express');
 const path = require('path');
 
 const { ROOT_DIR } = require('./lib/paths');
-const { listCustomers, loadInfo, saveInfo } = require('./lib/customers');
+const { listCustomers, loadInfo, saveInfo, createCustomer } = require('./lib/customers');
 const { generatePdf } = require('./lib/pdf');
 const { FIELDS, SECTIONS, EXTRA_SAVE_KEYS, collectEmpty } = require('./fields');
 const {
@@ -23,6 +26,7 @@ const {
 const { fromLegacy } = require('./lib/adminBridge');
 const { buildLocationId } = require('./lib/locationId');
 const { resolveSignatoryId } = require('./lib/stamp');
+const { searchIndustries, getIndustry } = require('./lib/industries');
 
 const app = express();
 app.use(express.json({ limit: '1mb' }));
@@ -85,6 +89,41 @@ app.get('/api/customers', async (req, res) => {
     return { ...c, emptyFields: empty, emptyCount: empty.length };
   });
   res.json(rows);
+});
+
+app.post('/api/customers', (req, res) => {
+  try {
+    const created = createCustomer({
+      hoTen: req.body?.hoTen,
+      tenHKD: req.body?.tenHKD
+    });
+    res.status(201).json({ ok: true, ...created, _empty: collectEmpty(created) });
+  } catch (err) {
+    const status = err.code === 'DUPLICATE' || err.code === 'BAD_INPUT' || err.code === 'BAD_SLUG' ? 400 : 500;
+    res.status(status).json({ error: err.message });
+  }
+});
+
+app.get('/api/industries', (req, res) => {
+  try {
+    const limit = req.query.limit;
+    res.json(searchIndustries(req.query.q || '', { limit }));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/industries/:code', (req, res) => {
+  try {
+    const row = getIndustry(req.params.code);
+    if (!row) {
+      res.status(404).json({ error: `Không tìm thấy mã ngành: ${req.params.code}` });
+      return;
+    }
+    res.json(row);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.get('/api/customers/:name', (req, res) => {
@@ -197,7 +236,23 @@ app.get('/api/admin/signatory-resolve', (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`GUI đang chạy tại: http://localhost:${PORT}`);
-});
+const PREFERRED_PORT = Number(process.env.PORT) || 3000;
+
+function start(port, attemptsLeft = 20) {
+  const server = app.listen(port);
+  server.once('listening', () => {
+    const note = port !== PREFERRED_PORT ? ` (cổng ${PREFERRED_PORT} đang bị chiếm)` : '';
+    console.log(`GUI đang chạy tại: http://localhost:${port}${note}`);
+  });
+  server.once('error', (err) => {
+    if (err.code === 'EADDRINUSE' && attemptsLeft > 0) {
+      console.warn(`Cổng ${port} đang dùng — thử ${port + 1}…`);
+      start(port + 1, attemptsLeft - 1);
+      return;
+    }
+    console.error(err);
+    process.exit(1);
+  });
+}
+
+start(PREFERRED_PORT);

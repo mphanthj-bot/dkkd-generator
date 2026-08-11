@@ -28,6 +28,7 @@
         <h2>Hồ sơ</h2>
         <span class="rail-count" id="railCount">–</span>
       </div>
+      <button type="button" class="rail-add" id="btnNewProfile">+ Thêm hồ sơ</button>
       <ul class="file-list" id="fileList" aria-label="Danh sách hồ sơ"></ul>
     </aside>
 
@@ -35,6 +36,22 @@
       <p class="loading">Đang mở hồ sơ…</p>
     </section>
   </main>
+
+  <dialog class="modal" id="newProfileModal">
+    <form method="dialog" id="newProfileForm" class="modal-card">
+      <h3>Thêm hồ sơ trống</h3>
+      <p class="modal-hint">Nhập họ tên và/hoặc tên HKD — hệ thống tạo thư mục slug và mở form trống.</p>
+      <label class="field-label" for="newHoTen">Họ và tên</label>
+      <input id="newHoTen" name="hoTen" type="text" autocomplete="name">
+      <label class="field-label" for="newTenHKD">Tên hộ kinh doanh</label>
+      <input id="newTenHKD" name="tenHKD" type="text" autocomplete="organization">
+      <p class="modal-error" id="newProfileError" hidden></p>
+      <div class="modal-actions">
+        <button type="submit" value="cancel" class="btn-ghost">Hủy</button>
+        <button type="submit" value="create" class="btn-primary" id="btnCreateProfile">Tạo hồ sơ</button>
+      </div>
+    </form>
+  </dialog>
 
   <div class="toast" id="toast" role="status"></div>
 

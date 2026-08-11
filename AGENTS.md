@@ -40,13 +40,22 @@ node src/render.js all
 
 On each generate, `loadSignatory(data.location_id || 'default')` builds a red circular stamp in RAM and injects it (plus optional signature PNG) as `data:image/png;base64,...` into the HTML before Puppeteer prints. Signatory JSON is keyed by sanitized `location_id` (exact → parent → `default`). Rendered stamps are never written under `output/`. Edit `data/signatories/default.json` / `signature.png` to customize (see `data/signatories/README.md`).
 
+### Industries + new profile
+
+- Offline VSIC cấp-4: `data/industries/` + `src/lib/industries.js`
+- GUI: **+ Thêm hồ sơ** creates blank `customers/<slug>/`; section 3 searches ngành and shows TT 40 GTGT/TNCN notes (not printed on PDF)
+- Validate: `npm run seed:industries`
+
 ### API (local)
 
 - `GET /api/fields` — field metadata + sections
 - `GET /api/customers` — list customers with empty-field counts
+- `POST /api/customers` — create blank profile `{ hoTen?, tenHKD? }`
 - `GET /api/customers/:name` — full `info.json` + `_empty`
 - `PUT /api/customers/:name` — save allowed fields into `info.json`
 - `POST /api/customers/:name/print` — save + render PDF, return `/output/...` URL
+- `GET /api/industries?q=&limit=` — search VSIC cấp-4 + tax summary
+- `GET /api/industries/:code` — one industry + tax
 - `GET /api/admin/catalog` — resolve v1/v2 from ĐK date (or `adminCatalog` override)
 - `GET /api/admin/provinces|districts|wards` — offline picker data by catalog
 - `GET /api/admin/bridge/from-legacy` — legacy ward → new ward candidates
@@ -54,9 +63,9 @@ On each generate, `loadSignatory(data.location_id || 'default')` builds a red ci
 
 ## Adding a new customer
 
-1. `cp -r customers/_template customers/<safe_name>`
-2. Edit `customers/<safe_name>/info.json` with customer data
-3. Run `node src/render.js <safe_name>` (or fill via `npm start`)
+1. GUI **+ Thêm hồ sơ**, or `cp -r customers/_template customers/<safe_name>`
+2. Edit fields in GUI / `info.json`
+3. Run `node src/render.js <safe_name>` (or Print in GUI)
 
 Customer folder name is slugified from the name (no diacritics, lowercase, underscores).
 
@@ -64,7 +73,7 @@ Canonical subject field key is `chuThe` (not `ownerType`). Older files with `own
 
 ## Knowledge base
 
-- `kb/INDEX.md` — durable runbooks (schema, stamping, admin catalog, decisions)
+- `kb/INDEX.md` — durable runbooks (schema, stamping, admin catalog, industries, decisions)
 
 ## Key constraints
 

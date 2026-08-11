@@ -25,6 +25,13 @@ const state = {
     locationId: '',
     staleLocation: false,
     signatoryFallback: false
+  },
+  industryTax: {},
+  industryPanel: {
+    rowIndex: null,
+    q: '',
+    results: [],
+    timer: null
   }
 };
 
@@ -61,7 +68,7 @@ async function init() {
     selectCustomer(state.customers[0].name);
   } else {
     $('#railCount').textContent = '0';
-    $('#fileList').innerHTML = '<li class="rail-empty">Chưa có hồ sơ nào.<br>Tạo thư mục trong <span class="mono">customers/</span> trước.</li>';
+    $('#fileList').innerHTML = '<li class="rail-empty">Chưa có hồ sơ nào.<br>Bấm <strong>+ Thêm hồ sơ</strong> để tạo mới.</li>';
     $('#sheet').innerHTML = '<p class="sheet-error">Chưa có hồ sơ nào để hiển thị.</p>';
   }
 }
@@ -152,6 +159,8 @@ function renderSheet() {
   $('#printBtn').addEventListener('click', doPrint);
   setupHqPicker();
   refreshAdminCatalog();
+  bindIndustryEditor();
+  prefetchIndustryTaxes();
 }
 
 function renderSection(sec) {
@@ -240,29 +249,263 @@ function renderDateField() {
   `;
 }
 
+function parseIndustryCode(row) {
+  if (row && row.code) return String(row.code).replace(/\D/g, '');
+  const m = String(row?.maNganh || '').match(/(\d{4})/);
+  return m ? m[1] : '';
+}
+
+function formatMaNganh(code, isPrimary) {
+  if (!code) return '';
+  return isPrimary ? `${code} (Chính)` : code;
+}
+
+function taxNoteFor(code) {
+  if (!code) return '<span class="industry-tax muted">Chọn mã VSIC cấp 4</span>';
+  const tax = state.industryTax[code];
+  if (!tax) return '<span class="industry-tax muted">…</span>';
+  if (tax.unknown) {
+    return '<span class="industry-tax warn">Chưa map thuế — kiểm tra thủ công</span>';
+  }
+  return `<span class="industry-tax">GTGT ${esc(String(tax.gtgtPercent))}% · TNCN ${esc(String(tax.tncnPercent))}% (TT 40/2021) · ${esc(tax.label || '')}</span>`;
+}
+
 function renderIndustry() {
   const rows = state.data && Array.isArray(state.data.industry) ? state.data.industry : [];
-  const label = '<span class="field-label">Ngành, nghề kinh doanh</span>';
+  const panel = state.industryPanel;
+  const panelOpen = panel.rowIndex != null;
 
-  if (rows.length === 0) {
-    return `
-      ${label}
-      <p class="industry-empty">Chưa có ngành nghề nào trong hồ sơ — cần bổ sung trước khi in.</p>
-    `;
-  }
+  const rowsHtml = rows.length === 0
+    ? '<p class="industry-empty">Chưa có ngành nghề — bấm Thêm ngành hoặc chọn từ bảng VSIC.</p>'
+    : rows.map((r, i) => {
+      const code = parseIndustryCode(r);
+      const primary = !!r.isPrimary || /\(Chính\)/i.test(String(r.maNganh || ''));
+      return `
+        <div class="industry-row" data-idx="${i}">
+          <span class="idx">${i + 1}</span>
+          <div class="industry-main">
+            <div class="industry-title">${esc(r.tenNganh || '—')}</div>
+            <div class="industry-meta">
+              <span class="code">${esc(r.maNganh || code || '—')}</span>
+              ${primary ? '<span class="primary-tag">Chính</span>' : ''}
+            </div>
+            <div class="industry-tax-slot">${taxNoteFor(code)}</div>
+            ${!code ? '<span class="industry-tax warn">Thiếu mã QĐ 36 — chọn lại từ bảng</span>' : ''}
+          </div>
+          <div class="industry-actions">
+            <button type="button" class="btn-ghost sm" data-industry-pick="${i}">Đổi</button>
+            ${primary ? '' : `<button type="button" class="btn-ghost sm" data-industry-primary="${i}">Đặt chính</button>`}
+            <button type="button" class="btn-ghost sm danger" data-industry-del="${i}">Xóa</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+  const panelHtml = panelOpen ? `
+    <div class="industry-panel" id="industryPanel">
+      <div class="industry-panel-head">
+        <input type="search" id="industrySearch" placeholder="Tìm mã hoặc tên ngành (VD: 4641, vải)…" value="${esc(panel.q)}" autocomplete="off">
+        <button type="button" class="btn-ghost sm" id="industryPanelClose">Đóng</button>
+      </div>
+      <div class="industry-panel-table-wrap">
+        <table class="industry-panel-table">
+          <thead>
+            <tr><th>Mã</th><th>Tên</th><th>GTGT%</th><th>TNCN%</th><th>Nhóm</th></tr>
+          </thead>
+          <tbody>
+            ${(panel.results || []).length === 0
+              ? '<tr><td colspan="5" class="muted">Không tìm thấy</td></tr>'
+              : panel.results.map((r) => {
+                const t = r.tax || {};
+                const gtgt = t.unknown ? '—' : t.gtgtPercent;
+                const tncn = t.unknown ? '—' : t.tncnPercent;
+                const grp = t.unknown ? 'Chưa map' : (t.label || '');
+                return `<tr tabindex="0" role="button" data-pick-code="${esc(r.code)}" data-pick-name="${esc(r.name)}">
+                  <td class="mono">${esc(r.code)}</td>
+                  <td>${esc(r.name)}</td>
+                  <td class="mono">${esc(String(gtgt))}</td>
+                  <td class="mono">${esc(String(tncn))}</td>
+                  <td>${esc(grp)}</td>
+                </tr>`;
+              }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  ` : '';
 
   return `
-    ${label}
-    <div class="industry-list">
-      ${rows.map((r, i) => `
-        <div class="industry-row">
-          <span class="idx">${i + 1}</span>
-          <span>${esc(r.tenNganh || '')}</span>
-          <span class="code">${esc(r.maNganh || '')}</span>
-        </div>
-      `).join('')}
+    <span class="field-label">Ngành, nghề kinh doanh</span>
+    <div class="industry-editor" id="industryEditor">
+      <div class="industry-list">${rowsHtml}</div>
+      <div class="industry-toolbar">
+        <button type="button" class="btn-primary sm" id="btnAddIndustry">+ Thêm ngành</button>
+      </div>
+      ${panelHtml}
     </div>
   `;
+}
+
+function ensureIndustryArray() {
+  if (!state.data) state.data = {};
+  if (!Array.isArray(state.data.industry)) state.data.industry = [];
+  return state.data.industry;
+}
+
+function setPrimaryIndustry(idx) {
+  const rows = ensureIndustryArray();
+  rows.forEach((r, i) => {
+    const code = parseIndustryCode(r);
+    r.isPrimary = i === idx;
+    if (code) r.maNganh = formatMaNganh(code, r.isPrimary);
+  });
+}
+
+function applyIndustryPick(code, name) {
+  const rows = ensureIndustryArray();
+  let idx = state.industryPanel.rowIndex;
+  if (idx == null || idx < 0) {
+    rows.push({});
+    idx = rows.length - 1;
+  }
+  const isFirst = rows.length === 1;
+  const row = rows[idx] || {};
+  row.code = code;
+  row.tenNganh = name;
+  row.isPrimary = isFirst || !!row.isPrimary;
+  row.maNganh = formatMaNganh(code, row.isPrimary);
+  rows[idx] = row;
+  if (row.isPrimary) setPrimaryIndustry(idx);
+  state.industryPanel.rowIndex = null;
+  state.industryPanel.q = '';
+  state.industryPanel.results = [];
+  refreshIndustrySection();
+  scheduleSave();
+  updateBadges();
+}
+
+function refreshIndustrySection() {
+  const editor = $('#industryEditor');
+  if (!editor) return;
+  const field = editor.closest('.field');
+  if (!field) return;
+  field.innerHTML = renderIndustry();
+  bindIndustryEditor();
+  prefetchIndustryTaxes();
+}
+
+async function prefetchIndustryTaxes() {
+  const rows = ensureIndustryArray();
+  const codes = [...new Set(rows.map(parseIndustryCode).filter(Boolean))];
+  let changed = false;
+  await Promise.all(codes.map(async (code) => {
+    if (state.industryTax[code]) return;
+    try {
+      const res = await fetch(`/api/industries/${encodeURIComponent(code)}`);
+      if (!res.ok) {
+        state.industryTax[code] = { unknown: true };
+      } else {
+        const json = await res.json();
+        state.industryTax[code] = json.tax || { unknown: true };
+      }
+    } catch {
+      state.industryTax[code] = { unknown: true };
+    }
+    changed = true;
+  }));
+  if (!changed) return;
+  $$('#industryEditor .industry-row').forEach((rowEl) => {
+    const idx = Number(rowEl.dataset.idx);
+    const code = parseIndustryCode(rows[idx] || {});
+    const slot = $('.industry-tax-slot', rowEl);
+    if (slot) slot.innerHTML = taxNoteFor(code);
+  });
+}
+
+async function searchIndustryPanel(q) {
+  state.industryPanel.q = q;
+  try {
+    const params = new URLSearchParams({ q, limit: '40' });
+    const res = await fetch(`/api/industries?${params}`);
+    state.industryPanel.results = res.ok ? await res.json() : [];
+    (state.industryPanel.results || []).forEach((r) => {
+      if (r.code && r.tax) state.industryTax[r.code] = r.tax;
+    });
+  } catch {
+    state.industryPanel.results = [];
+  }
+  refreshIndustrySection();
+  const input = $('#industrySearch');
+  if (input) {
+    input.focus();
+    const len = input.value.length;
+    input.setSelectionRange(len, len);
+  }
+}
+
+function openIndustryPanel(rowIndex) {
+  state.industryPanel.rowIndex = rowIndex;
+  state.industryPanel.q = '';
+  state.industryPanel.results = [];
+  refreshIndustrySection();
+  searchIndustryPanel('');
+}
+
+function bindIndustryEditor() {
+  const addBtn = $('#btnAddIndustry');
+  if (addBtn) {
+    addBtn.addEventListener('click', () => {
+      ensureIndustryArray();
+      openIndustryPanel(state.data.industry.length);
+    });
+  }
+  $$('[data-industry-pick]').forEach((btn) => {
+    btn.addEventListener('click', () => openIndustryPanel(Number(btn.dataset.industryPick)));
+  });
+  $$('[data-industry-del]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const idx = Number(btn.dataset.industryDel);
+      const rows = ensureIndustryArray();
+      rows.splice(idx, 1);
+      if (rows.length && !rows.some((r) => r.isPrimary)) setPrimaryIndustry(0);
+      else rows.forEach((r, i) => {
+        const code = parseIndustryCode(r);
+        if (code) r.maNganh = formatMaNganh(code, !!r.isPrimary);
+      });
+      state.industryPanel.rowIndex = null;
+      refreshIndustrySection();
+      scheduleSave();
+      updateBadges();
+    });
+  });
+  $$('[data-industry-primary]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      setPrimaryIndustry(Number(btn.dataset.industryPrimary));
+      refreshIndustrySection();
+      scheduleSave();
+    });
+  });
+  const close = $('#industryPanelClose');
+  if (close) {
+    close.addEventListener('click', () => {
+      state.industryPanel.rowIndex = null;
+      refreshIndustrySection();
+    });
+  }
+  const search = $('#industrySearch');
+  if (search) {
+    search.addEventListener('input', () => {
+      clearTimeout(state.industryPanel.timer);
+      state.industryPanel.timer = setTimeout(() => searchIndustryPanel(search.value.trim()), 200);
+    });
+  }
+  $$('#industryPanel [data-pick-code]').forEach((tr) => {
+    const pick = () => applyIndustryPick(tr.dataset.pickCode, tr.dataset.pickName);
+    tr.addEventListener('click', pick);
+    tr.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); }
+    });
+  });
 }
 
 /* ---------------- HQ picker (admin catalog) ---------------- */
@@ -793,6 +1036,9 @@ function currentValues() {
   } else if (state.data?.location_id && !locationIdMatchesCatalog(state.data.location_id, catalog)) {
     values.location_id = '';
   }
+  if (state.data && Array.isArray(state.data.industry)) {
+    values.industry = state.data.industry;
+  }
   return values;
 }
 
@@ -1004,3 +1250,49 @@ document.addEventListener('click', (e) => {
 });
 
 init();
+
+/* ---------------- Thêm hồ sơ ---------------- */
+
+const newProfileModal = $('#newProfileModal');
+const newProfileForm = $('#newProfileForm');
+
+$('#btnNewProfile')?.addEventListener('click', () => {
+  $('#newProfileError').hidden = true;
+  $('#newHoTen').value = '';
+  $('#newTenHKD').value = '';
+  newProfileModal?.showModal();
+  $('#newHoTen')?.focus();
+});
+
+newProfileForm?.addEventListener('submit', async (e) => {
+  const submitter = e.submitter;
+  if (submitter && submitter.value === 'cancel') return;
+  e.preventDefault();
+  const hoTen = $('#newHoTen').value.trim();
+  const tenHKD = $('#newTenHKD').value.trim();
+  const errEl = $('#newProfileError');
+  errEl.hidden = true;
+  try {
+    const res = await fetch('/api/customers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hoTen, tenHKD })
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      errEl.textContent = json.error || 'Không tạo được hồ sơ';
+      errEl.hidden = false;
+      return;
+    }
+    newProfileModal.close();
+    const listRes = await fetch('/api/customers');
+    state.customers = await listRes.json();
+    renderRail();
+    await selectCustomer(json.name);
+    toast(`Đã tạo hồ sơ <span class="mono">${esc(json.name)}</span>`, 'ok');
+  } catch {
+    errEl.textContent = 'Không kết nối được máy chủ.';
+    errEl.hidden = false;
+  }
+});
+

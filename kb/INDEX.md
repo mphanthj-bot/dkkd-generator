@@ -7,6 +7,7 @@ Durable project knowledge for Cursor agents. Commands/architecture overview stay
 | [schema-info-json.md](schema-info-json.md) | Editing `info.json` / fields / GUI |
 | [stamping.md](stamping.md) | Dấu đỏ, chữ ký, signatory |
 | [admin-catalog.md](admin-catalog.md) | Địa giới v1/v2, cutover, bridge, `location_id`, GUI pickers |
+| [industries.md](industries.md) | VSIC cấp-4, TT 40 tax notes, Thêm hồ sơ |
 | [decisions.md](decisions.md) | Why Phase A/B/3 choices; out of scope |
 
 Maintain via skill `create-project-kb`.

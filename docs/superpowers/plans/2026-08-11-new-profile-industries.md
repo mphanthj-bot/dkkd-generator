@@ -24,32 +24,32 @@
 
 **Files:** Create `src/lib/industries.js`, `data/industries/*`, `test/industries.test.js`; touch `paths.js`
 
-- [ ] Failing tests for search/get/resolveTax
-- [ ] Implement + seed `vsic-level4.json` (full cấp 4) + `tax-groups.json`
+- [x] Failing tests for search/get/resolveTax
+- [x] Implement + seed `vsic-level4.json` (full cấp 4) + `tax-groups.json`
 - [ ] Commit
 
 ### Task 2: createCustomer + POST /api/customers
 
 **Files:** `customers.js`, `server.js`, test
 
-- [ ] Blank info from FIELDS; reject duplicate/bad slug
+- [x] Blank info from FIELDS; reject duplicate/bad slug
 - [ ] Commit
 
 ### Task 3: GET /api/industries
 
 **Files:** `server.js`
 
-- [ ] `?q=&limit=` and `/:code`
+- [x] `?q=&limit=` and `/:code`
 - [ ] Commit
 
 ### Task 4: GUI — Thêm hồ sơ + industry panel
 
 **Files:** `public/app.js`, `public/style.css`
 
-- [ ] Modal create; industry editor with search table + tax note + primary
+- [x] Modal create; industry editor with search table + tax note + primary
 - [ ] Commit
 
 ### Task 5: Docs + verify
 
-- [ ] `kb/industries.md`, INDEX, AGENTS; `npm test`; smoke create + search
+- [x] `kb/industries.md`, INDEX, AGENTS; `npm test`; smoke create + search
 - [ ] Commit
