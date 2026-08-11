@@ -1,16 +1,19 @@
 # Dependencies
 node_modules/
 
-# Output files
+# Generated PDFs
 output/
 
-# Old/test files
+# Customer ID photos (keep folder structure, ignore images)
+customers/*/images/*.jpg
+customers/*/images/*.png
+customers/*/images/*.jpeg
+
+# Legacy / one-off experiment artifacts (not part of the app)
 *.py
 clone-*
 test-*
 debug-*
-server.js
-pdf-layout.json
 extract-*
 compare-*
 analyze-*
@@ -19,8 +22,7 @@ template-v2.html
 template-exact.html
 render-exact.js
 render-pdf.js
-package-lock.json
-output/
+pdf-layout.json
 DKKD_final.pdf
 DKKD_final_test.pdf
 DKKD_NguyenThiPhuong_final.pdf
@@ -30,15 +32,8 @@ clone-exact.pdf
 compare-exact.pdf
 compare-original.pdf
 
-# Customer images (keep structure, ignore images)
-customers/*/images/*.jpg
-customers/*/images/*.png
-customers/*/images/*.jpeg
-
-# OS files
+# OS / IDE
 Thumbs.db
 Desktop.ini
-
-# IDE
 .vscode/
 .idea/

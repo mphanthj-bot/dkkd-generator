@@ -4,12 +4,13 @@
   "description": "Generate PDF for Giấy chứng nhận đăng ký hộ kinh doanh",
   "main": "src/render.js",
   "scripts": {
+    "start": "node src/server.js",
     "generate": "node src/render.js",
     "generate:all": "node src/render.js all",
-    "list": "node src/render.js list",
-    "test": "python test-full.py"
+    "list": "node src/render.js list"
   },
   "dependencies": {
+    "express": "^5.2.1",
     "puppeteer": "^21.0.0"
   }
 }

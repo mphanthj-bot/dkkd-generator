@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Điền thông tin còn thiếu · Đăng ký hộ kinh doanh</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-seal" aria-hidden="true">★</span>
+      <div class="brand-text">
+        <p class="brand-eyebrow">Phòng đăng ký kinh doanh</p>
+        <h1 class="brand-title">Điền thông tin còn thiếu</h1>
+      </div>
+    </div>
+    <p class="topbar-note">Chọn hồ sơ, điền vào chỗ trống, đóng dấu in giấy.</p>
+  </header>
+
+  <main class="desk">
+    <aside class="rail">
+      <div class="rail-head">
+        <h2>Hồ sơ</h2>
+        <span class="rail-count" id="railCount">–</span>
+      </div>
+      <ul class="file-list" id="fileList" aria-label="Danh sách hồ sơ"></ul>
+    </aside>
+
+    <section class="sheet" id="sheet" aria-live="polite">
+      <p class="loading">Đang mở hồ sơ…</p>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -11,6 +11,25 @@ function loadTemplate() {
   return fs.readFileSync(TEMPLATE_PATH, 'utf-8');
 }
 
+function slugify(name) {
+  return String(name)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]/g, '_')
+    .replace(/_+/g, '_')
+    .toLowerCase();
+}
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[c]));
+}
+
 function buildIndustryRows(industries) {
   if (!industries || industries.length === 0) {
     return `<tr><td>1</td><td></td><td></td></tr>`;
@@ -19,42 +38,45 @@ function buildIndustryRows(industries) {
     return `<tr>
       <td>${index + 1}</td>
       <td>
-        ${item.tenNganh || ''}
+        ${escapeHtml(item.tenNganh || '')}
         <br><span class="industry-note">(Cơ sở phải đảm bảo các điều kiện theo quy định pháp luật trong hoạt động kinh doanh)</span>
       </td>
-      <td>${item.maNganh || ''}</td>
+      <td>${escapeHtml(item.maNganh || '')}</td>
     </tr>`;
   }).join('\n');
 }
 
 function fillTemplate(template, data) {
   let result = template;
+  const text = (value, fallback = '') => escapeHtml(value || fallback);
+  // Canonical key is chuThe; ownerType kept as read fallback for older info.json.
+  const chuThe = data.chuThe || data.ownerType || 'Cá nhân';
 
   const replacements = {
-    '{{coQuanChuQuan}}': data.coQuanChuQuan || 'UBND PHƯỜNG TÂN THUẬN',
-    '{{phongKinhTe}}': data.phongKinhTe || 'PHÒNG KINH TẾ, HẠ TẦNG VÀ ĐÔ THỊ',
-    '{{maSo}}': data.maSo || '',
-    '{{ngayDK}}': data.ngayDK || '',
-    '{{thangDK}}': data.thangDK || '',
-    '{{namDK}}': data.namDK || '',
-    '{{tenHKD}}': data.tenHKD || '',
-    '{{diaChi}}': data.diaChi || '',
-    '{{dienThoai}}': data.dienThoai || '',
-    '{{fax}}': data.fax || '',
-    '{{email}}': data.email || '',
-    '{{website}}': data.website || '',
+    '{{coQuanChuQuan}}': text(data.coQuanChuQuan, 'UBND PHƯỜNG TÂN THUẬN'),
+    '{{phongKinhTe}}': text(data.phongKinhTe, 'PHÒNG KINH TẾ, HẠ TẦNG VÀ ĐÔ THỊ'),
+    '{{maSo}}': text(data.maSo),
+    '{{ngayDK}}': text(data.ngayDK),
+    '{{thangDK}}': text(data.thangDK),
+    '{{namDK}}': text(data.namDK),
+    '{{tenHKD}}': text(data.tenHKD),
+    '{{diaChi}}': text(data.diaChi),
+    '{{dienThoai}}': text(data.dienThoai),
+    '{{fax}}': text(data.fax),
+    '{{email}}': text(data.email),
+    '{{website}}': text(data.website),
     '{{nganhNgheRows}}': buildIndustryRows(data.industry),
-    '{{vonSo}}': data.vonSo || '',
-    '{{vonChu}}': data.vonChu || '',
-    '{{chuThe}}': data.ownerType || 'Cá nhân',
-    '{{hoTen}}': data.hoTen || '',
-    '{{gioiTinh}}': data.gioiTinh || '',
-    '{{ngaySinh}}': data.ngaySinh || '',
-    '{{danToc}}': data.danToc || '',
-    '{{quocTich}}': data.quocTich || '',
-    '{{soCCCD}}': data.soCCCD || '',
-    '{{noiThuongTru}}': data.noiThuongTru || '',
-    '{{noiOHienTai}}': data.noiOHienTai || ''
+    '{{vonSo}}': text(data.vonSo),
+    '{{vonChu}}': text(data.vonChu),
+    '{{chuThe}}': text(chuThe),
+    '{{hoTen}}': text(data.hoTen),
+    '{{gioiTinh}}': text(data.gioiTinh),
+    '{{ngaySinh}}': text(data.ngaySinh),
+    '{{danToc}}': text(data.danToc),
+    '{{quocTich}}': text(data.quocTich),
+    '{{soCCCD}}': text(data.soCCCD),
+    '{{noiThuongTru}}': text(data.noiThuongTru),
+    '{{noiOHienTai}}': text(data.noiOHienTai)
   };
 
   for (const [placeholder, value] of Object.entries(replacements)) {
@@ -86,23 +108,11 @@ async function renderToPdf(htmlContent, outputPath) {
 }
 
 function getCustomerDir(customerName) {
-  const safeName = customerName
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-zA-Z0-9]/g, '_')
-    .replace(/_+/g, '_')
-    .toLowerCase();
-  return path.join(CUSTOMERS_DIR, safeName);
+  return path.join(CUSTOMERS_DIR, slugify(customerName));
 }
 
 function getOutputDir(customerName) {
-  const safeName = customerName
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-zA-Z0-9]/g, '_')
-    .replace(/_+/g, '_')
-    .toLowerCase();
-  return path.join(OUTPUT_DIR, safeName);
+  return path.join(OUTPUT_DIR, slugify(customerName));
 }
 
 async function generatePdf(customerName) {
@@ -170,6 +180,8 @@ async function generateAll() {
 module.exports = {
   loadTemplate,
   fillTemplate,
+  escapeHtml,
+  slugify,
   renderToPdf,
   generatePdf,
   listCustomers,
