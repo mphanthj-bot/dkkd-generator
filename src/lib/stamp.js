@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { createCanvas } = require('@napi-rs/canvas');
 const { SIGNATORIES_DIR } = require('./paths');
+const { parentLocationIds } = require('./locationId');
 
 const INK = '#C8102E';
 const DIAMETER = 500;
@@ -130,16 +131,52 @@ function generatePlaceholderSignaturePng() {
   return canvas.toBuffer('image/png');
 }
 
-function loadSignatory(id = 'default') {
-  const jsonPath = path.join(SIGNATORIES_DIR, `${id}.json`);
+function locationIdToFilename(id) {
+  return String(id).replace(':', '_');
+}
+
+function signatoryJsonPath(id) {
+  return path.join(SIGNATORIES_DIR, `${id}.json`);
+}
+
+function resolveSignatoryId(locationId) {
+  const tried = [];
+  const candidates = [locationId, ...parentLocationIds(locationId)];
+
+  for (const candidate of candidates) {
+    const id = locationIdToFilename(candidate);
+    tried.push(id);
+    if (fs.existsSync(signatoryJsonPath(id))) {
+      return {
+        id,
+        usedFallback: candidate !== locationId,
+        tried
+      };
+    }
+  }
+
+  if (fs.existsSync(signatoryJsonPath('default'))) {
+    tried.push('default');
+    return { id: 'default', usedFallback: true, tried };
+  }
+
+  throw new Error(`No signatory found for location_id: ${locationId}`);
+}
+
+function looksLikeLocationId(value) {
+  return typeof value === 'string' && /^v[12]:/.test(value);
+}
+
+function loadSignatorySync(id = 'default') {
+  const jsonPath = signatoryJsonPath(id);
   if (!fs.existsSync(jsonPath)) {
     throw new Error(`Signatory not found: ${jsonPath}`);
   }
 
   const meta = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
   const stampBuf = generateStampPng({
-    ringTop: meta.stamp_ring_text || meta.authority_l1 || '',
-    ringBottom: meta.stamp_bottom_text || ''
+    ringTop: meta.stamp_ring_text || meta.stamp_outer_top || meta.authority_l1 || '',
+    ringBottom: meta.stamp_bottom_text || meta.stamp_outer_bottom || ''
   });
 
   let signatureDataUrl = '';
@@ -157,9 +194,21 @@ function loadSignatory(id = 'default') {
   };
 }
 
+function loadSignatory(idOrLocationId = 'default') {
+  if (looksLikeLocationId(idOrLocationId)) {
+    return Promise.resolve().then(() => {
+      const { id } = resolveSignatoryId(idOrLocationId);
+      return loadSignatorySync(id);
+    });
+  }
+  return loadSignatorySync(idOrLocationId);
+}
+
 module.exports = {
   generateStampPng,
   generatePlaceholderSignaturePng,
+  locationIdToFilename,
+  resolveSignatoryId,
   loadSignatory,
   bufferToDataUrl
 };

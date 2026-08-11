@@ -1,15 +1,26 @@
 # Signatory assets (Phase 3)
 
-Local master data for stamping PDFs. No database — one default record for now.
+Local master data for stamping PDFs. No database — one default record plus optional per-location files.
 
 ## Layout
 
 ```
 data/signatories/
-  default.json              # authority + stamp ring text + signature path
+  default.json              # fallback authority + stamp ring text + signature path
+  v1_01-005.json            # example district signatory (location_id v1:01-005)
   default/signature.png     # wet-ink signature (RGBA PNG, transparent bg)
   README.md
 ```
+
+## Location-based signatories
+
+`loadSignatory(location_id)` resolves a signatory JSON by `location_id` (e.g. `v1:01-005-00166`):
+
+1. Exact ward/district file (`v1_01-005-00166.json`)
+2. Parent locations (`v1_01-005.json`, then `v1_01.json`)
+3. `default.json`
+
+Filename convention: replace `:` with `_` — `v1:01-005` → `v1_01-005.json`.
 
 ## Replace the signature
 
