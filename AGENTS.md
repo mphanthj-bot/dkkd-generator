@@ -23,15 +23,21 @@ node src/render.js all
 
 ## Architecture
 
-- `src/template.html` — HTML template with `{{placeholder}}` fields
-- `src/lib/` — Shared modules: `paths`, `slug`, `html`, `template`, `customers`, `pdf`
+- `src/template.html` — HTML template with `{{placeholder}}` fields + signature/stamp overlay
+- `src/lib/` — Shared modules: `paths`, `slug`, `html`, `template`, `customers`, `pdf`, `stamp`
+- `src/lib/stamp.js` — In-memory red stamp (`@napi-rs/canvas`) + load signatory assets
 - `src/render.js` — Thin CLI + re-export facade over `src/lib/*`
 - `src/fields.js` — Field metadata + empty-field detection (shared by API/GUI)
 - `src/server.js` — Express API + static GUI (`public/`), uses `src/lib/*`
 - `public/` — Local fill-in UI for missing certificate fields
+- `data/signatories/` — Local signatory master (`default.json` + `default/signature.png`)
 - `input/DKKD_template.pdf` — Original PDF (reference only, not used in rendering)
 - `customers/_template/` — Copy this to create a new customer
 - `output/<name>/DKKD_<CCCD>.pdf` — Generated output (gitignored)
+
+### Stamping (Phase 3)
+
+On each generate, `loadSignatory('default')` builds a red circular stamp in RAM and injects it (plus optional signature PNG) as `data:image/png;base64,...` into the HTML before Puppeteer prints. Rendered stamps are never written under `output/`. Edit `data/signatories/default.json` / `signature.png` to customize (see `data/signatories/README.md`).
 
 ### API (local)
 
@@ -57,4 +63,5 @@ Canonical subject field key is `chuThe` (not `ownerType`). Older files with `own
 - `output/` is gitignored — generated PDFs are not tracked
 - Template uses `split().join()` for replacement (not regex) to avoid special-char issues
 - Text values are HTML-escaped before injection; industry rows are built as HTML with escaped cell text
+- Stamp/signature images are injected as in-memory data URLs only
 - Puppeteer args: `--no-sandbox --disable-setuid-sandbox` required in CI/container environments

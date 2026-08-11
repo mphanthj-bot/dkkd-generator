@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { loadTemplate, fillTemplate } = require('./template');
 const { getCustomerDir, getOutputDir, loadInfo, listCustomers } = require('./customers');
+const { loadSignatory } = require('./stamp');
 
 async function renderToPdf(htmlContent, outputPath) {
   const browser = await puppeteer.launch({
@@ -34,8 +35,9 @@ async function generatePdf(customerName) {
   }
 
   const data = loadInfo(path.basename(customerDir));
+  const signatory = loadSignatory('default');
   const template = loadTemplate();
-  const html = fillTemplate(template, data);
+  const html = fillTemplate(template, data, signatory);
 
   const outputDir = getOutputDir(customerName);
   fs.mkdirSync(outputDir, { recursive: true });

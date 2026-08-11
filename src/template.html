@@ -171,12 +171,50 @@
       font-style: italic;
     }
 
-    /* ===== SIGNATURE ===== */
-    .signature {
-      text-align: right;
-      margin-top: 35pt;
+    /* ===== SIGNATURE + STAMP ===== */
+    .signature-block {
+      position: relative;
+      margin-top: 28pt;
+      margin-left: auto;
+      width: 72mm;
+      min-height: 48mm;
+      text-align: center;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .signature-title {
       font-weight: bold;
       font-size: 14pt;
+      text-transform: uppercase;
+    }
+
+    .signature-img {
+      display: block;
+      margin: 4pt auto 0;
+      height: 18mm;
+      width: auto;
+      max-width: 45mm;
+      object-fit: contain;
+    }
+
+    .signature-name {
+      margin-top: 2pt;
+      font-weight: bold;
+      font-size: 13pt;
+      text-transform: uppercase;
+    }
+
+    .stamp-overlay {
+      position: absolute;
+      left: -8mm;
+      bottom: 2mm;
+      width: 38mm;
+      height: 38mm;
+      object-fit: contain;
+      opacity: 0.92;
+      pointer-events: none;
+      z-index: 2;
     }
   </style>
 </head>
@@ -277,8 +315,13 @@
       </div>
     </div>
 
-    <!-- SIGNATURE -->
-    <div class="signature">TRƯỞNG PHÒNG</div>
+    <!-- SIGNATURE + STAMP -->
+    <div class="signature-block">
+      <div class="signature-title">{{signatoryTitle}}</div>
+      {{signatureImg}}
+      <div class="signature-name">{{signatoryName}}</div>
+      {{stampImg}}
+    </div>
 
   </div>
 </body>

@@ -10,6 +10,7 @@
     "list": "node src/render.js list"
   },
   "dependencies": {
+    "@napi-rs/canvas": "^1.0.5",
     "express": "^5.2.1",
     "puppeteer": "^21.0.0"
   }

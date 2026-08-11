@@ -22,15 +22,26 @@ function buildIndustryRows(industries) {
   }).join('\n');
 }
 
-function fillTemplate(template, data) {
+function imgTag(dataUrl, className, alt) {
+  if (!dataUrl || typeof dataUrl !== 'string') return '';
+  // data URLs are produced in-process; only allow png data URLs.
+  if (!dataUrl.startsWith('data:image/png;base64,')) return '';
+  return `<img class="${className}" src="${dataUrl}" alt="${escapeHtml(alt)}" />`;
+}
+
+function fillTemplate(template, data, signatory) {
   let result = template;
   const text = (value, fallback = '') => escapeHtml(value || fallback);
   // Canonical key is chuThe; ownerType kept as read fallback for older info.json.
   const chuThe = data.chuThe || data.ownerType || 'Cá nhân';
+  const meta = (signatory && signatory.meta) || {};
+
+  const coQuan = data.coQuanChuQuan || meta.authority_l1 || 'UBND PHƯỜNG TÂN THUẬN';
+  const phong = data.phongKinhTe || meta.authority_l2 || 'PHÒNG KINH TẾ, HẠ TẦNG VÀ ĐÔ THỊ';
 
   const replacements = {
-    '{{coQuanChuQuan}}': text(data.coQuanChuQuan, 'UBND PHƯỜNG TÂN THUẬN'),
-    '{{phongKinhTe}}': text(data.phongKinhTe, 'PHÒNG KINH TẾ, HẠ TẦNG VÀ ĐÔ THỊ'),
+    '{{coQuanChuQuan}}': text(coQuan),
+    '{{phongKinhTe}}': text(phong),
     '{{maSo}}': text(data.maSo),
     '{{ngayDK}}': text(data.ngayDK),
     '{{thangDK}}': text(data.thangDK),
@@ -52,7 +63,11 @@ function fillTemplate(template, data) {
     '{{quocTich}}': text(data.quocTich),
     '{{soCCCD}}': text(data.soCCCD),
     '{{noiThuongTru}}': text(data.noiThuongTru),
-    '{{noiOHienTai}}': text(data.noiOHienTai)
+    '{{noiOHienTai}}': text(data.noiOHienTai),
+    '{{signatoryTitle}}': text(meta.signatory_title, 'TRƯỞNG PHÒNG'),
+    '{{signatoryName}}': text(meta.signatory_name),
+    '{{signatureImg}}': imgTag(signatory && signatory.signatureDataUrl, 'signature-img', 'Chữ ký'),
+    '{{stampImg}}': imgTag(signatory && signatory.stampDataUrl, 'stamp-overlay', 'Dấu đỏ')
   };
 
   for (const [placeholder, value] of Object.entries(replacements)) {
