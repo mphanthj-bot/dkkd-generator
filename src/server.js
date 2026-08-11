@@ -21,6 +21,7 @@ const {
   listWards
 } = require('./lib/adminCatalog');
 const { fromLegacy } = require('./lib/adminBridge');
+const { buildLocationId } = require('./lib/locationId');
 
 const app = express();
 app.use(express.json({ limit: '1mb' }));
@@ -163,6 +164,22 @@ app.get('/api/admin/wards', (req, res) => {
 app.get('/api/admin/bridge/from-legacy', (req, res) => {
   const { legacyName, legacyWardCode, targetCatalog } = req.query;
   res.json(fromLegacy({ legacyName, legacyWardCode, targetCatalog }));
+});
+
+app.get('/api/admin/build-location-id', (req, res) => {
+  const { catalog, provinceCode, districtCode, wardCode } = req.query;
+  if (!requireCatalog(catalog, res)) return;
+  try {
+    const location_id = buildLocationId({
+      catalog,
+      provinceCode,
+      districtCode: catalog === 'v2' ? undefined : districtCode,
+      wardCode
+    });
+    res.json({ location_id });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 });
 
 const PORT = process.env.PORT || 3000;

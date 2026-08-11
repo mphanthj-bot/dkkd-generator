@@ -7,7 +7,23 @@ const state = {
   current: null,   // tên hồ sơ đang xem
   data: null,      // info.json của hồ sơ đang xem
   saveTimer: null,
-  printing: false
+  printing: false,
+  admin: {
+    catalog: null,
+    warning: null,
+    error: null,
+    provinces: [],
+    districts: [],
+    wards: [],
+    provinceCode: '',
+    districtCode: '',
+    wardCode: '',
+    streetLine: '',
+    provinceName: '',
+    districtName: '',
+    wardName: '',
+    locationId: ''
+  }
 };
 
 const DATE_PARTS = ['ngayDK', 'thangDK', 'namDK'];
@@ -132,6 +148,8 @@ function renderSheet() {
 
   bindInputs();
   $('#printBtn').addEventListener('click', doPrint);
+  setupHqPicker();
+  refreshAdminCatalog();
 }
 
 function renderSection(sec) {
@@ -150,6 +168,7 @@ function renderField(key) {
   if (!meta) return '';
   if (key === 'thangDK' || key === 'namDK') return ''; // nằm trong hàng ngày đăng ký
   if (key === 'ngayDK') return renderDateField();
+  if (key === 'diaChi') return renderHqPicker();
   if (meta.array) return `<div class="field wide">${renderIndustry()}</div>`;
   return renderScalarField(key, meta);
 }
@@ -244,6 +263,414 @@ function renderIndustry() {
   `;
 }
 
+/* ---------------- HQ picker (admin catalog) ---------------- */
+
+function parseLocationIdClient(id) {
+  if (!id || typeof id !== 'string') return null;
+  let m = id.match(/^v1:(\d{2})(?:-(\d{3}))?(?:-(\d{5}))?$/);
+  if (m) {
+    const out = { catalog: 'v1', provinceCode: m[1] };
+    if (m[2]) out.districtCode = m[2];
+    if (m[3]) out.wardCode = m[3];
+    return out;
+  }
+  m = id.match(/^v2:(\d{2})(?:-(\d{5}))?$/);
+  if (m) {
+    const out = { catalog: 'v2', provinceCode: m[1] };
+    if (m[2]) out.wardCode = m[2];
+    return out;
+  }
+  return null;
+}
+
+function getDkDateQuery() {
+  const data = state.data || {};
+  const parts = {};
+  DATE_PARTS.forEach((p) => {
+    const el = $(`#sheet input[data-part="${p}"]`);
+    parts[p] = el ? el.value : (data[p] || '');
+  });
+  return parts;
+}
+
+function composeHqAddress() {
+  const a = state.admin;
+  const parts = [];
+  if (!isEmptyVal(a.streetLine)) parts.push(a.streetLine.trim());
+  if (a.wardName) parts.push(a.wardName);
+  if (a.catalog === 'v1' && a.districtName) parts.push(a.districtName);
+  if (a.provinceName) parts.push(a.provinceName);
+  return parts.join(', ');
+}
+
+function renderHqPicker() {
+  const label = esc(state.fields.diaChi?.label || 'Trụ sở của hộ kinh doanh');
+  return `
+    <div class="field wide hq-picker" id="hqPicker">
+      <span class="field-label">${label}<span class="catalog-tag" id="hqCatalogTag"></span></span>
+      <div id="catalogBanner"></div>
+      <div class="hq-row" id="hqRow">
+        <div>
+          <span class="field-label">Tỉnh / Thành phố</span>
+          <select class="blank" id="hqProvince" data-hq="province">
+            <option value="">— chọn —</option>
+          </select>
+        </div>
+        <div id="hqDistrictWrap">
+          <span class="field-label">Quận / Huyện</span>
+          <select class="blank" id="hqDistrict" data-hq="district">
+            <option value="">— chọn —</option>
+          </select>
+        </div>
+        <div>
+          <span class="field-label">Phường / Xã</span>
+          <select class="blank" id="hqWard" data-hq="ward">
+            <option value="">— chọn —</option>
+          </select>
+        </div>
+      </div>
+      <label class="field-label" for="hqStreet">Số nhà, đường</label>
+      <input class="blank wide" id="hqStreet" type="text" placeholder="Ví dụ: Số 32 ngõ 120 Trần Duy Hưng" autocomplete="off">
+      <div class="hq-preview" id="hqPreview"></div>
+      <div class="hq-bridge">
+        <input class="blank" id="hqLegacyName" type="text" placeholder="Tên phường/xã địa giới cũ" autocomplete="off">
+        <button class="hq-bridge-btn" id="hqBridgeBtn" type="button">Đổi từ địa giới cũ</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderCatalogBanner() {
+  const banner = $('#catalogBanner');
+  if (!banner) return;
+  const { warning, error } = state.admin;
+  if (error === 'invalid_dk_date') {
+    banner.className = 'catalog-banner error';
+    banner.textContent = 'Ngày đăng ký không hợp lệ — sửa trước khi in giấy.';
+    return;
+  }
+  if (warning === 'missing_dk_date') {
+    banner.className = 'catalog-banner warn';
+    banner.textContent = 'Chưa có ngày đăng ký — dùng danh mục địa giới mới (v2) tạm thời.';
+    return;
+  }
+  banner.className = 'catalog-banner';
+  banner.textContent = '';
+}
+
+function updateHqPreview() {
+  const preview = $('#hqPreview');
+  if (!preview) return;
+  const composed = composeHqAddress();
+  if (composed) {
+    preview.innerHTML = `<strong>Địa chỉ:</strong> ${esc(composed)}`;
+  } else if (state.data?.diaChi) {
+    preview.innerHTML = `<strong>Địa chỉ (hiện tại):</strong> ${esc(state.data.diaChi)}`;
+  } else {
+    preview.innerHTML = '<span>Chọn địa giới và nhập số nhà/đường để ghép địa chỉ trụ sở.</span>';
+  }
+}
+
+function updateCatalogTag() {
+  const tag = $('#hqCatalogTag');
+  if (!tag) return;
+  tag.textContent = state.admin.catalog ? state.admin.catalog : '';
+  tag.style.display = state.admin.catalog ? '' : 'none';
+}
+
+function updateDistrictVisibility() {
+  const wrap = $('#hqDistrictWrap');
+  const row = $('#hqRow');
+  if (!wrap || !row) return;
+  const isV2 = state.admin.catalog === 'v2';
+  wrap.hidden = isV2;
+  row.classList.toggle('v2', isV2);
+}
+
+function updatePrintButton() {
+  const btn = $('#printBtn');
+  if (!btn) return;
+  btn.disabled = state.admin.error === 'invalid_dk_date';
+}
+
+function normCode(code) {
+  if (code == null || code === '') return '';
+  return String(Number(code));
+}
+
+function fillSelect(el, items, selectedCode, labelKey = 'name', codeKey = 'code') {
+  if (!el) return;
+  const sel = normCode(selectedCode);
+  el.innerHTML = `<option value="">— chọn —</option>${items.map((item) => {
+    const code = normCode(item[codeKey]);
+    return `<option value="${esc(code)}"${code === sel ? ' selected' : ''}>${esc(item[labelKey])}</option>`;
+  }).join('')}`;
+}
+
+async function refreshAdminCatalog() {
+  const q = new URLSearchParams(getDkDateQuery());
+  if (state.data?.adminCatalog) q.set('adminCatalog', state.data.adminCatalog);
+  try {
+    const res = await fetch(`/api/admin/catalog?${q}`);
+    const json = await res.json();
+    const prev = state.admin.catalog;
+    state.admin.catalog = json.catalog || 'v2';
+    state.admin.warning = json.warning || null;
+    state.admin.error = json.error || null;
+    renderCatalogBanner();
+    updateCatalogTag();
+    updateDistrictVisibility();
+    updatePrintButton();
+    if (prev !== state.admin.catalog) {
+      state.admin.provinceCode = '';
+      state.admin.districtCode = '';
+      state.admin.wardCode = '';
+      state.admin.districts = [];
+      state.admin.wards = [];
+    }
+    await loadAdminProvinces();
+    await restoreHqFromSaved();
+    syncHqToDom();
+    await syncLocationId();
+    updateHqPreview();
+    updateBadges();
+  } catch {
+    toast('Không tải được danh mục địa giới.', 'error');
+  }
+}
+
+async function loadAdminProvinces() {
+  const catalog = state.admin.catalog || 'v2';
+  const res = await fetch(`/api/admin/provinces?catalog=${encodeURIComponent(catalog)}`);
+  state.admin.provinces = res.ok ? await res.json() : [];
+  fillSelect($('#hqProvince'), state.admin.provinces, state.admin.provinceCode);
+}
+
+async function loadAdminDistricts() {
+  const catalog = state.admin.catalog || 'v2';
+  if (catalog === 'v2') {
+    state.admin.districts = [];
+    fillSelect($('#hqDistrict'), [], '');
+    return;
+  }
+  if (!state.admin.provinceCode) {
+    state.admin.districts = [];
+    fillSelect($('#hqDistrict'), [], '');
+    return;
+  }
+  const q = new URLSearchParams({
+    catalog,
+    provinceCode: state.admin.provinceCode
+  });
+  const res = await fetch(`/api/admin/districts?${q}`);
+  state.admin.districts = res.ok ? await res.json() : [];
+  fillSelect($('#hqDistrict'), state.admin.districts, state.admin.districtCode);
+}
+
+async function loadAdminWards() {
+  const catalog = state.admin.catalog || 'v2';
+  if (!state.admin.provinceCode) {
+    state.admin.wards = [];
+    fillSelect($('#hqWard'), [], '');
+    return;
+  }
+  const q = new URLSearchParams({
+    catalog,
+    provinceCode: state.admin.provinceCode
+  });
+  if (catalog === 'v1' && state.admin.districtCode) {
+    q.set('districtCode', state.admin.districtCode);
+  }
+  const res = await fetch(`/api/admin/wards?${q}`);
+  state.admin.wards = res.ok ? await res.json() : [];
+  fillSelect($('#hqWard'), state.admin.wards, state.admin.wardCode);
+}
+
+function syncHqNames() {
+  const a = state.admin;
+  const province = a.provinces.find((p) => normCode(p.code) === normCode(a.provinceCode));
+  a.provinceName = province?.name || '';
+  const district = a.districts.find((d) => normCode(d.code) === normCode(a.districtCode));
+  a.districtName = district?.name || '';
+  const ward = a.wards.find((w) => normCode(w.code) === normCode(a.wardCode));
+  a.wardName = ward?.name || '';
+}
+
+async function syncLocationId() {
+  const a = state.admin;
+  if (!a.catalog || !a.provinceCode) {
+    a.locationId = '';
+    return;
+  }
+  const q = new URLSearchParams({
+    catalog: a.catalog,
+    provinceCode: a.provinceCode
+  });
+  if (a.catalog === 'v1' && a.districtCode) q.set('districtCode', a.districtCode);
+  if (a.wardCode) q.set('wardCode', a.wardCode);
+  try {
+    const res = await fetch(`/api/admin/build-location-id?${q}`);
+    if (!res.ok) {
+      a.locationId = '';
+      return;
+    }
+    const json = await res.json();
+    a.locationId = json.location_id || '';
+  } catch {
+    a.locationId = '';
+  }
+}
+
+function syncHqToDom() {
+  const street = $('#hqStreet');
+  if (street && street !== document.activeElement) {
+    street.value = state.admin.streetLine || '';
+  }
+  fillSelect($('#hqProvince'), state.admin.provinces, state.admin.provinceCode);
+  fillSelect($('#hqDistrict'), state.admin.districts, state.admin.districtCode);
+  fillSelect($('#hqWard'), state.admin.wards, state.admin.wardCode);
+}
+
+async function restoreHqFromSaved() {
+  const data = state.data || {};
+  const parsed = parseLocationIdClient(data.location_id);
+  if (parsed) {
+    state.admin.provinceCode = normCode(parsed.provinceCode);
+    state.admin.districtCode = parsed.districtCode ? normCode(parsed.districtCode) : '';
+    state.admin.wardCode = parsed.wardCode ? normCode(parsed.wardCode) : '';
+    await loadAdminDistricts();
+    await loadAdminWards();
+    syncHqNames();
+  }
+}
+
+async function onHqProvinceChange() {
+  const el = $('#hqProvince');
+  state.admin.provinceCode = el ? el.value : '';
+  state.admin.districtCode = '';
+  state.admin.wardCode = '';
+  await loadAdminDistricts();
+  await loadAdminWards();
+  syncHqNames();
+  await syncLocationId();
+  updateHqPreview();
+  scheduleSave();
+  updateBadges();
+}
+
+async function onHqDistrictChange() {
+  const el = $('#hqDistrict');
+  state.admin.districtCode = el ? el.value : '';
+  state.admin.wardCode = '';
+  await loadAdminWards();
+  syncHqNames();
+  await syncLocationId();
+  updateHqPreview();
+  scheduleSave();
+  updateBadges();
+}
+
+async function onHqWardChange() {
+  const el = $('#hqWard');
+  state.admin.wardCode = el ? el.value : '';
+  syncHqNames();
+  await syncLocationId();
+  updateHqPreview();
+  scheduleSave();
+  updateBadges();
+}
+
+function onHqStreetInput() {
+  const el = $('#hqStreet');
+  state.admin.streetLine = el ? el.value : '';
+  updateHqPreview();
+  scheduleSave();
+  updateBadges();
+}
+
+async function findDistrictForWard(provinceCode, wardCode) {
+  for (const d of state.admin.districts) {
+    const q = new URLSearchParams({
+      catalog: 'v1',
+      provinceCode,
+      districtCode: d.code
+    });
+    const res = await fetch(`/api/admin/wards?${q}`);
+    const wards = res.ok ? await res.json() : [];
+    if (wards.some((w) => normCode(w.code) === normCode(wardCode))) {
+      return normCode(d.code);
+    }
+  }
+  return '';
+}
+
+async function onHqBridgeClick() {
+  const legacyInput = $('#hqLegacyName');
+  const legacyName = legacyInput ? legacyInput.value.trim() : '';
+  if (!legacyName) {
+    toast('Nhập tên phường/xã địa giới cũ.', 'error');
+    return;
+  }
+  const q = new URLSearchParams({
+    legacyName,
+    targetCatalog: state.admin.catalog || 'v2'
+  });
+  const res = await fetch(`/api/admin/bridge/from-legacy?${q}`);
+  const hits = res.ok ? await res.json() : [];
+  if (!hits.length) {
+    toast('Không tìm thấy địa giới tương ứng trong danh mục hiện tại.', 'error');
+    return;
+  }
+  const hit = hits[0];
+  state.admin.provinceCode = normCode(hit.province_code);
+  state.admin.wardCode = normCode(hit.code);
+  state.admin.districtCode = '';
+  await loadAdminDistricts();
+  if (state.admin.catalog === 'v1') {
+    state.admin.districtCode = await findDistrictForWard(state.admin.provinceCode, state.admin.wardCode);
+  }
+  await loadAdminWards();
+  syncHqNames();
+  await syncLocationId();
+  syncHqToDom();
+  updateHqPreview();
+  scheduleSave();
+  updateBadges();
+  toast(`Đã gợi ý: ${hit.name}`, 'ok');
+}
+
+function setupHqPicker() {
+  const data = state.data || {};
+  state.admin = {
+    catalog: data.adminCatalog || null,
+    warning: null,
+    error: null,
+    provinces: [],
+    districts: [],
+    wards: [],
+    provinceCode: '',
+    districtCode: '',
+    wardCode: '',
+    streetLine: '',
+    provinceName: '',
+    districtName: '',
+    wardName: '',
+    locationId: data.location_id || ''
+  };
+
+  const province = $('#hqProvince');
+  const district = $('#hqDistrict');
+  const ward = $('#hqWard');
+  const street = $('#hqStreet');
+  const bridgeBtn = $('#hqBridgeBtn');
+
+  if (province) province.addEventListener('change', onHqProvinceChange);
+  if (district) district.addEventListener('change', onHqDistrictChange);
+  if (ward) ward.addEventListener('change', onHqWardChange);
+  if (street) street.addEventListener('input', onHqStreetInput);
+  if (bridgeBtn) bridgeBtn.addEventListener('click', onHqBridgeClick);
+}
+
 /* ---------------- Sự kiện nhập liệu ---------------- */
 
 function bindInputs() {
@@ -253,6 +680,7 @@ function bindInputs() {
       updateBadges();
     });
     el.addEventListener('change', () => {
+      if (el.dataset.part) refreshAdminCatalog();
       scheduleSave();
       updateBadges();
     });
@@ -268,6 +696,11 @@ function currentValues() {
     const el = $(`#sheet input[data-part="${p}"]`);
     if (el) values[p] = el.value;
   });
+  const composed = composeHqAddress();
+  if (composed) values.diaChi = composed;
+  else if (state.data?.diaChi) values.diaChi = state.data.diaChi;
+  if (state.admin.locationId) values.location_id = state.admin.locationId;
+  if (state.admin.catalog) values.adminCatalog = state.admin.catalog;
   return values;
 }
 
@@ -313,6 +746,12 @@ function computeEmpty() {
           return !isEmptyVal(v);
         });
         if (!ok) empty.push(key);
+        continue;
+      }
+      if (key === 'diaChi') {
+        const composed = composeHqAddress();
+        const v = composed || (state.data ? state.data.diaChi : '');
+        if (isEmptyVal(v)) empty.push(key);
         continue;
       }
       const el = $(`#sheet input[data-field="${key}"], #sheet select[data-field="${key}"]`);
@@ -372,6 +811,10 @@ function renderMissingStrip(empty) {
 
 async function doPrint() {
   if (state.printing) return;
+  if (state.admin.error === 'invalid_dk_date') {
+    toast('Ngày đăng ký không hợp lệ — sửa trước khi in.', 'error');
+    return;
+  }
   state.printing = true;
 
   const btn = $('#printBtn');
@@ -432,6 +875,7 @@ document.addEventListener('click', (e) => {
   }
 
   const el = $(`#sheet input[data-part="${key}"]`) ||
+             $(`#sheet #hqStreet`) ||
              $(`#sheet input[data-field="${key}"], #sheet select[data-field="${key}"]`);
   if (el) {
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
