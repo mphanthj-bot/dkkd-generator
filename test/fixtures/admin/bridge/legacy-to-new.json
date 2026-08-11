@@ -1,0 +1,19 @@
+{
+  "fromLegacyByCode": {
+    "166": [
+      { "code": 160, "name": "Phường Nghĩa Đô", "province_code": 1 },
+      { "code": 166, "name": "Phường Cầu Giấy", "province_code": 1 }
+    ]
+  },
+  "toLegaciesByCode": {
+    "166": [
+      { "code": 166, "name": "Phường Dịch Vọng", "district_code": 5, "province_code": 1 },
+      { "code": 167, "name": "Phường Dịch Vọng Hậu", "district_code": 5, "province_code": 1 }
+    ]
+  },
+  "fromLegacyByName": {
+    "dich vong": [
+      { "code": 166, "name": "Phường Cầu Giấy", "province_code": 1 }
+    ]
+  }
+}
