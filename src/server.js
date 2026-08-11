@@ -7,14 +7,12 @@
 //   POST /api/customers/:name/print  save + render PDF, return its URL
 
 const express = require('express');
-const fs = require('fs');
 const path = require('path');
 
-const { listCustomers, generatePdf } = require('./render');
+const { ROOT_DIR } = require('./lib/paths');
+const { listCustomers, loadInfo, saveInfo } = require('./lib/customers');
+const { generatePdf } = require('./lib/pdf');
 const { FIELDS, SECTIONS, collectEmpty } = require('./fields');
-
-const ROOT_DIR = path.resolve(__dirname, '..');
-const CUSTOMERS_DIR = path.join(ROOT_DIR, 'customers');
 
 const app = express();
 app.use(express.json({ limit: '1mb' }));
@@ -22,25 +20,6 @@ app.use(express.static(path.join(ROOT_DIR, 'public')));
 app.use('/output', express.static(path.join(ROOT_DIR, 'output')));
 
 const SAFE_NAME = /^[a-z0-9_]+$/;
-
-function normalizeInfo(data) {
-  // Prefer chuThe; migrate legacy ownerType on read.
-  if (data && (data.chuThe == null || data.chuThe === '') && data.ownerType) {
-    data.chuThe = data.ownerType;
-  }
-  return data;
-}
-
-function loadInfo(name) {
-  const file = path.join(CUSTOMERS_DIR, name, 'info.json');
-  if (!fs.existsSync(file)) return null;
-  return normalizeInfo(JSON.parse(fs.readFileSync(file, 'utf-8')));
-}
-
-function saveInfo(name, data) {
-  const file = path.join(CUSTOMERS_DIR, name, 'info.json');
-  fs.writeFileSync(file, JSON.stringify(data, null, 2) + '\n', 'utf-8');
-}
 
 function requireCustomer(req, res) {
   const { name } = req.params;

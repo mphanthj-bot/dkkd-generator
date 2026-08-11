@@ -24,9 +24,10 @@ node src/render.js all
 ## Architecture
 
 - `src/template.html` — HTML template with `{{placeholder}}` fields
-- `src/render.js` — Reads `customers/<name>/info.json`, fills template, renders PDF via Puppeteer
+- `src/lib/` — Shared modules: `paths`, `slug`, `html`, `template`, `customers`, `pdf`
+- `src/render.js` — Thin CLI + re-export facade over `src/lib/*`
 - `src/fields.js` — Field metadata + empty-field detection (shared by API/GUI)
-- `src/server.js` — Express API + static GUI (`public/`)
+- `src/server.js` — Express API + static GUI (`public/`), uses `src/lib/*`
 - `public/` — Local fill-in UI for missing certificate fields
 - `input/DKKD_template.pdf` — Original PDF (reference only, not used in rendering)
 - `customers/_template/` — Copy this to create a new customer
