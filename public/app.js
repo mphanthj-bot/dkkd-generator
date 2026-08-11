@@ -409,7 +409,6 @@ function fillSelect(el, items, selectedCode, labelKey = 'name', codeKey = 'code'
 
 async function refreshAdminCatalog() {
   const q = new URLSearchParams(getDkDateQuery());
-  if (state.data?.adminCatalog) q.set('adminCatalog', state.data.adminCatalog);
   try {
     const res = await fetch(`/api/admin/catalog?${q}`);
     const json = await res.json();
@@ -531,6 +530,12 @@ function syncHqToDom() {
   fillSelect($('#hqWard'), state.admin.wards, state.admin.wardCode);
 }
 
+function parseStreetFromDiaChi(diaChi) {
+  if (isEmptyVal(diaChi)) return '';
+  const idx = String(diaChi).indexOf(',');
+  return (idx === -1 ? String(diaChi) : String(diaChi).slice(0, idx)).trim();
+}
+
 async function restoreHqFromSaved() {
   const data = state.data || {};
   const parsed = parseLocationIdClient(data.location_id);
@@ -541,6 +546,9 @@ async function restoreHqFromSaved() {
     await loadAdminDistricts();
     await loadAdminWards();
     syncHqNames();
+  }
+  if (isEmptyVal(state.admin.streetLine) && data.diaChi) {
+    state.admin.streetLine = parseStreetFromDiaChi(data.diaChi);
   }
 }
 
@@ -642,7 +650,7 @@ async function onHqBridgeClick() {
 function setupHqPicker() {
   const data = state.data || {};
   state.admin = {
-    catalog: data.adminCatalog || null,
+    catalog: null,
     warning: null,
     error: null,
     provinces: [],
@@ -700,7 +708,6 @@ function currentValues() {
   if (composed) values.diaChi = composed;
   else if (state.data?.diaChi) values.diaChi = state.data.diaChi;
   if (state.admin.locationId) values.location_id = state.admin.locationId;
-  if (state.admin.catalog) values.adminCatalog = state.admin.catalog;
   return values;
 }
 
@@ -844,9 +851,9 @@ async function doPrint() {
   } catch (err) {
     toast('Không kết nối được máy in. Thử lại.', 'error');
   } finally {
-    btn.disabled = false;
     btn.classList.remove('stamping', 'spinning');
     state.printing = false;
+    updatePrintButton();
   }
 }
 
@@ -874,8 +881,16 @@ document.addEventListener('click', (e) => {
     return;
   }
 
+  if (key === 'diaChi') {
+    const el = $('#hqPicker') || $('#hqProvince') || $('#hqStreet');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (el.focus) el.focus({ preventScroll: true });
+    }
+    return;
+  }
+
   const el = $(`#sheet input[data-part="${key}"]`) ||
-             $(`#sheet #hqStreet`) ||
              $(`#sheet input[data-field="${key}"], #sheet select[data-field="${key}"]`);
   if (el) {
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
