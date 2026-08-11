@@ -1,0 +1,10 @@
+[
+  {
+    "name": "Thành phố Hà Nội",
+    "code": 1,
+    "wards": [
+      { "name": "Phường Cầu Giấy", "code": 166 },
+      { "name": "Phường Yên Hòa", "code": 172 }
+    ]
+  }
+]

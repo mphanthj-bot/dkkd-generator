@@ -1,0 +1,16 @@
+[
+  {
+    "name": "Thành phố Hà Nội",
+    "code": 1,
+    "districts": [
+      {
+        "name": "Quận Cầu Giấy",
+        "code": 5,
+        "wards": [
+          { "name": "Phường Dịch Vọng", "code": 166 },
+          { "name": "Phường Yên Hoà", "code": 172 }
+        ]
+      }
+    ]
+  }
+]
