@@ -1,0 +1,15 @@
+{
+  "name": "dkkd-generator",
+  "version": "1.0.0",
+  "description": "Generate PDF for Giấy chứng nhận đăng ký hộ kinh doanh",
+  "main": "src/render.js",
+  "scripts": {
+    "generate": "node src/render.js",
+    "generate:all": "node src/render.js all",
+    "list": "node src/render.js list",
+    "test": "python test-full.py"
+  },
+  "dependencies": {
+    "puppeteer": "^21.0.0"
+  }
+}

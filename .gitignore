@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+
+# Output files
+output/
+
+# Old/test files
+*.py
+clone-*
+test-*
+debug-*
+server.js
+pdf-layout.json
+extract-*
+compare-*
+analyze-*
+phoi-trang.*
+template-v2.html
+template-exact.html
+render-exact.js
+render-pdf.js
+package-lock.json
+output/
+DKKD_final.pdf
+DKKD_final_test.pdf
+DKKD_NguyenThiPhuong_final.pdf
+DKKD_NguyenThiPhuong_v2.pdf
+DKKD_NguyenThiPhuong.pdf
+clone-exact.pdf
+compare-exact.pdf
+compare-original.pdf
+
+# Customer images (keep structure, ignore images)
+customers/*/images/*.jpg
+customers/*/images/*.png
+customers/*/images/*.jpeg
+
+# OS files
+Thumbs.db
+Desktop.ini
+
+# IDE
+.vscode/
+.idea/

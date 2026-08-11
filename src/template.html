@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Giấy chứng nhận đăng ký hộ kinh doanh</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 0;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Times New Roman', ' serif;
+      font-size: 14pt;
+      line-height: 1.25;
+      color: #000;
+    }
+
+    .page {
+      width: 210mm;
+      height: 297mm;
+      padding: 21mm 22.8mm 20mm 22.8mm;
+      background: #fff;
+    }
+
+    /* ===== HEADER ===== */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 14pt;
+    }
+
+    .header-left {
+      font-size: 12pt;
+      text-transform: uppercase;
+      line-height: 1.25;
+    }
+
+    .header-left .line1 {
+      font-weight: normal;
+    }
+
+    .header-left .line2 {
+      font-weight: bold;
+    }
+
+    .header-right {
+      text-align: center;
+      font-size: 12pt;
+      text-transform: uppercase;
+      line-height: 1.25;
+    }
+
+    .header-right .line1 {
+      font-weight: bold;
+    }
+
+    .header-right .line2 {
+      font-weight: bold;
+      font-style: italic;
+      font-size: 14pt;
+      text-transform: none;
+    }
+
+    /* ===== TITLE ===== */
+    .title {
+      text-align: center;
+      font-size: 14pt;
+      font-weight: bold;
+      text-transform: uppercase;
+      margin: 20pt 0 10pt 0;
+    }
+
+    /* ===== BUSINESS CODE ===== */
+    .business-code {
+      text-align: center;
+      font-size: 14pt;
+      margin: 8pt 0;
+    }
+
+    .business-code strong {
+      font-weight: bold;
+    }
+
+    /* ===== REGISTRATION DATE ===== */
+    .registration-date {
+      text-align: center;
+      font-size: 14pt;
+      font-style: italic;
+      margin: 8pt 0 20pt 0;
+    }
+
+    /* ===== SECTIONS ===== */
+    .section {
+      margin-bottom: 8pt;
+    }
+
+    .section-number {
+      font-weight: bold;
+    }
+
+    .section-content {
+      margin-top: 3pt;
+    }
+
+    /* ===== TABLE ===== */
+    .business-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 8pt 0;
+      font-size: 14pt;
+    }
+
+    .business-table th,
+    .business-table td {
+      border: 1px solid #000;
+      padding: 5pt 6pt;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .business-table th {
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .business-table .col-stt {
+      width: 26pt;
+      text-align: center;
+    }
+
+    .business-table .col-ma {
+      width: 80pt;
+      text-align: center;
+    }
+
+    .industry-note {
+      font-size: 13pt;
+      font-style: italic;
+      color: #333;
+    }
+
+    /* ===== CONTACT ROW ===== */
+    .contact-row {
+      display: flex;
+      gap: 60pt;
+      margin: 3pt 0;
+    }
+
+    .contact-item {
+      font-size: 14pt;
+    }
+
+    /* ===== OWNER INFO ===== */
+    .owner-info {
+      margin-top: 3pt;
+    }
+
+    .owner-info p {
+      margin: 2pt 0;
+    }
+
+    /* ===== CAPITAL ===== */
+    .capital-words {
+      font-style: italic;
+    }
+
+    /* ===== SIGNATURE ===== */
+    .signature {
+      text-align: right;
+      margin-top: 35pt;
+      font-weight: bold;
+      font-size: 14pt;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <!-- HEADER -->
+    <div class="header">
+      <div class="header-left">
+        <div class="line1">{{coQuanChuQuan}}</div>
+        <div class="line2">{{phongKinhTe}}</div>
+      </div>
+      <div class="header-right">
+        <div class="line1">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
+        <div class="line2">Độc lập – Tự do – Hạnh phúc</div>
+      </div>
+    </div>
+
+    <!-- TITLE -->
+    <div class="title">GIẤY CHỨNG NHẬN ĐĂNG KÝ HỘ KINH DOANH</div>
+
+    <!-- BUSINESS CODE -->
+    <div class="business-code">
+      <strong>Mã số hộ kinh doanh:</strong> {{maSo}}
+    </div>
+
+    <!-- REGISTRATION DATE -->
+    <div class="registration-date">
+      Đăng ký lần đầu, ngày {{ngayDK}} tháng {{thangDK}} năm {{namDK}}
+    </div>
+
+    <!-- SECTION 1 -->
+    <div class="section">
+      <span class="section-number">1. Tên hộ kinh doanh:</span>
+      <div class="section-content">
+        Tên hộ kinh doanh viết bằng tiếng Việt: {{tenHKD}}
+      </div>
+    </div>
+
+    <!-- SECTION 2 -->
+    <div class="section">
+      <span class="section-number">2. Trụ sở của hộ kinh doanh:</span> {{diaChi}}
+      <div class="contact-row">
+        <div class="contact-item">Điện thoại: {{dienThoai}}</div>
+        <div class="contact-item">Fax: {{fax}}</div>
+      </div>
+      <div class="contact-row">
+        <div class="contact-item">Thư điện tử: {{email}}</div>
+        <div class="contact-item">Website: {{website}}</div>
+      </div>
+    </div>
+
+    <!-- SECTION 3 -->
+    <div class="section">
+      <span class="section-number">3. Ngành, nghề kinh doanh:</span>
+      <table class="business-table">
+        <thead>
+          <tr>
+            <th class="col-stt">STT</th>
+            <th>Tên ngành</th>
+            <th class="col-ma">Mã ngành</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{nganhNgheRows}}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- SECTION 4 -->
+    <div class="section">
+      <span class="section-number">4. Vốn kinh doanh:</span>
+      <div class="section-content">
+        Vốn kinh doanh (Bằng số): {{vonSo}} đồng
+        <br>Vốn kinh doanh (Bằng chữ): <span class="capital-words">{{vonChu}} đồng.</span>
+      </div>
+    </div>
+
+    <!-- SECTION 5 -->
+    <div class="section">
+      <span class="section-number">5. Chủ thể thành lập hộ kinh doanh:</span> {{chuThe}}
+    </div>
+
+    <!-- SECTION 6 -->
+    <div class="section">
+      <span class="section-number">6. Thông tin về chủ hộ kinh doanh:</span>
+      <div class="owner-info">
+        <p>Họ và tên: {{hoTen}}</p>
+        <p>Giới tính: {{gioiTinh}}</p>
+        <p>
+          Sinh ngày: {{ngaySinh}}
+          &nbsp;&nbsp;&nbsp; Dân tộc: {{danToc}}
+          &nbsp;&nbsp;&nbsp; Quốc tịch: {{quocTich}}
+        </p>
+        <p>Số định danh cá nhân: {{soCCCD}}</p>
+        <p>Nơi thường trú: {{noiThuongTru}}</p>
+        <p>Nơi ở hiện tại: {{noiOHienTai}}</p>
+      </div>
+    </div>
+
+    <!-- SIGNATURE -->
+    <div class="signature">TRƯỞNG PHÒNG</div>
+
+  </div>
+</body>
+</html>
