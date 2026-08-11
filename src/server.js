@@ -13,6 +13,14 @@ const { ROOT_DIR } = require('./lib/paths');
 const { listCustomers, loadInfo, saveInfo } = require('./lib/customers');
 const { generatePdf } = require('./lib/pdf');
 const { FIELDS, SECTIONS, EXTRA_SAVE_KEYS, collectEmpty } = require('./fields');
+const {
+  resolveCatalog,
+  validateDkDate,
+  loadProvinces,
+  listDistricts,
+  listWards
+} = require('./lib/adminCatalog');
+const { fromLegacy } = require('./lib/adminBridge');
 
 const app = express();
 app.use(express.json({ limit: '1mb' }));
@@ -46,6 +54,23 @@ function mergeFields(data, body) {
   return changed;
 }
 
+function requireCatalog(catalog, res) {
+  if (catalog !== 'v1' && catalog !== 'v2') {
+    res.status(400).json({ error: 'catalog phải là v1 hoặc v2' });
+    return false;
+  }
+  return true;
+}
+
+function rejectInvalidDkDate(data, res) {
+  const err = validateDkDate(data);
+  if (err) {
+    res.status(400).json({ error: err });
+    return true;
+  }
+  return false;
+}
+
 app.get('/api/fields', (req, res) => {
   res.json({ fields: FIELDS, sections: SECTIONS });
 });
@@ -70,6 +95,7 @@ app.put('/api/customers/:name', (req, res) => {
   const data = requireCustomer(req, res);
   if (!data) return;
   mergeFields(data, req.body);
+  if (rejectInvalidDkDate(data, res)) return;
   saveInfo(req.params.name, data);
   res.json({ ok: true, ...data, _empty: collectEmpty(data) });
 });
@@ -77,7 +103,9 @@ app.put('/api/customers/:name', (req, res) => {
 app.post('/api/customers/:name/print', async (req, res) => {
   const data = requireCustomer(req, res);
   if (!data) return;
-  if (mergeFields(data, req.body)) saveInfo(req.params.name, data);
+  const changed = mergeFields(data, req.body);
+  if (rejectInvalidDkDate(data, res)) return;
+  if (changed) saveInfo(req.params.name, data);
   try {
     const result = await generatePdf(req.params.name);
     const fileName = path.basename(result.output);
@@ -88,6 +116,53 @@ app.post('/api/customers/:name/print', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+app.get('/api/admin/catalog', (req, res) => {
+  res.json(resolveCatalog(req.query));
+});
+
+app.get('/api/admin/provinces', (req, res) => {
+  const { catalog } = req.query;
+  if (!requireCatalog(catalog, res)) return;
+  try {
+    res.json(loadProvinces(catalog));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/admin/districts', (req, res) => {
+  const { catalog, provinceCode } = req.query;
+  if (!requireCatalog(catalog, res)) return;
+  if (provinceCode == null || String(provinceCode).trim() === '') {
+    res.status(400).json({ error: 'provinceCode là bắt buộc' });
+    return;
+  }
+  try {
+    res.json(listDistricts(catalog, provinceCode));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/admin/wards', (req, res) => {
+  const { catalog, provinceCode, districtCode } = req.query;
+  if (!requireCatalog(catalog, res)) return;
+  if (provinceCode == null || String(provinceCode).trim() === '') {
+    res.status(400).json({ error: 'provinceCode là bắt buộc' });
+    return;
+  }
+  try {
+    res.json(listWards(catalog, { provinceCode, districtCode }));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/admin/bridge/from-legacy', (req, res) => {
+  const { legacyName, legacyWardCode, targetCatalog } = req.query;
+  res.json(fromLegacy({ legacyName, legacyWardCode, targetCatalog }));
 });
 
 const PORT = process.env.PORT || 3000;

@@ -69,9 +69,16 @@ function listWards(catalog, { provinceCode, districtCode }, opts = {}) {
   return district?.wards || [];
 }
 
+function validateDkDate(data) {
+  const r = resolveCatalog(data);
+  if (r.error) return r.error;
+  return null;
+}
+
 module.exports = {
   CUTOVER_ISO,
   resolveCatalog,
+  validateDkDate,
   loadProvinces,
   listDistricts,
   listWards
