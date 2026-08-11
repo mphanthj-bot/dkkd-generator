@@ -22,6 +22,7 @@ const {
 } = require('./lib/adminCatalog');
 const { fromLegacy } = require('./lib/adminBridge');
 const { buildLocationId } = require('./lib/locationId');
+const { resolveSignatoryId } = require('./lib/stamp');
 
 const app = express();
 app.use(express.json({ limit: '1mb' }));
@@ -179,6 +180,20 @@ app.get('/api/admin/build-location-id', (req, res) => {
     res.json({ location_id });
   } catch (err) {
     res.status(400).json({ error: err.message });
+  }
+});
+
+app.get('/api/admin/signatory-resolve', (req, res) => {
+  const { location_id: locationId } = req.query;
+  if (!locationId || typeof locationId !== 'string') {
+    res.json({ usedFallback: false });
+    return;
+  }
+  try {
+    const r = resolveSignatoryId(locationId);
+    res.json({ usedFallback: r.usedFallback, id: r.id });
+  } catch (err) {
+    res.status(404).json({ error: err.message });
   }
 });
 

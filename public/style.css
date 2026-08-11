@@ -673,6 +673,13 @@ select.blank {
 
 .hq-bridge-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+.hq-bridge-note {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+
 .catalog-tag {
   display: inline-block;
   font-size: 11px;

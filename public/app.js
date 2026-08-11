@@ -22,7 +22,9 @@ const state = {
     provinceName: '',
     districtName: '',
     wardName: '',
-    locationId: ''
+    locationId: '',
+    staleLocation: false,
+    signatoryFallback: false
   }
 };
 
@@ -293,6 +295,24 @@ function getDkDateQuery() {
   return parts;
 }
 
+function getCatalogQueryParams() {
+  const q = getDkDateQuery();
+  const override = state.data?.adminCatalog;
+  if (override === 'v1' || override === 'v2') {
+    q.adminCatalog = override;
+  }
+  return q;
+}
+
+function activeCatalog() {
+  return state.admin.catalog || 'v2';
+}
+
+function locationIdMatchesCatalog(locationId, catalog) {
+  const parsed = parseLocationIdClient(locationId);
+  return !!(parsed && parsed.catalog === catalog);
+}
+
 function composeHqAddress() {
   const a = state.admin;
   const parts = [];
@@ -335,6 +355,7 @@ function renderHqPicker() {
       <div class="hq-bridge">
         <input class="blank" id="hqLegacyName" type="text" placeholder="Tên phường/xã địa giới cũ" autocomplete="off">
         <button class="hq-bridge-btn" id="hqBridgeBtn" type="button">Đổi từ địa giới cũ</button>
+        <p class="hq-bridge-note" id="hqBridgeNote" hidden></p>
       </div>
     </div>
   `;
@@ -352,6 +373,16 @@ function renderCatalogBanner() {
   if (warning === 'missing_dk_date') {
     banner.className = 'catalog-banner warn';
     banner.textContent = 'Chưa có ngày đăng ký — dùng danh mục địa giới mới (v2) tạm thời.';
+    return;
+  }
+  if (state.admin.staleLocation) {
+    banner.className = 'catalog-banner warn';
+    banner.textContent = 'Địa giới đã lưu thuộc danh mục khác — chọn lại hoặc dùng "Đổi từ địa giới cũ" (v2).';
+    return;
+  }
+  if (state.admin.signatoryFallback) {
+    banner.className = 'catalog-banner warn';
+    banner.textContent = 'Con dấu/chữ ký dùng cấu hình mặc định — chưa có signatory cho địa giới này.';
     return;
   }
   banner.className = 'catalog-banner';
@@ -387,6 +418,24 @@ function updateDistrictVisibility() {
   row.classList.toggle('v2', isV2);
 }
 
+function updateBridgeUi() {
+  const isV2 = state.admin.catalog === 'v2';
+  const btn = $('#hqBridgeBtn');
+  const legacy = $('#hqLegacyName');
+  const note = $('#hqBridgeNote');
+  if (btn) btn.disabled = !isV2;
+  if (legacy) legacy.disabled = !isV2;
+  if (note) {
+    if (isV2) {
+      note.hidden = true;
+      note.textContent = '';
+    } else {
+      note.hidden = false;
+      note.textContent = 'Chuyển đổi địa giới cũ chỉ dùng với danh mục v2.';
+    }
+  }
+}
+
 function updatePrintButton() {
   const btn = $('#printBtn');
   if (!btn) return;
@@ -408,7 +457,7 @@ function fillSelect(el, items, selectedCode, labelKey = 'name', codeKey = 'code'
 }
 
 async function refreshAdminCatalog() {
-  const q = new URLSearchParams(getDkDateQuery());
+  const q = new URLSearchParams(getCatalogQueryParams());
   try {
     const res = await fetch(`/api/admin/catalog?${q}`);
     const json = await res.json();
@@ -416,9 +465,11 @@ async function refreshAdminCatalog() {
     state.admin.catalog = json.catalog || 'v2';
     state.admin.warning = json.warning || null;
     state.admin.error = json.error || null;
+    state.admin.signatoryFallback = false;
     renderCatalogBanner();
     updateCatalogTag();
     updateDistrictVisibility();
+    updateBridgeUi();
     updatePrintButton();
     if (prev !== state.admin.catalog) {
       state.admin.provinceCode = '';
@@ -429,6 +480,7 @@ async function refreshAdminCatalog() {
     }
     await loadAdminProvinces();
     await restoreHqFromSaved();
+    renderCatalogBanner();
     syncHqToDom();
     await syncLocationId();
     updateHqPreview();
@@ -536,16 +588,35 @@ function parseStreetFromDiaChi(diaChi) {
   return (idx === -1 ? String(diaChi) : String(diaChi).slice(0, idx)).trim();
 }
 
+function clearHqPickerCodes() {
+  state.admin.provinceCode = '';
+  state.admin.districtCode = '';
+  state.admin.wardCode = '';
+  state.admin.districts = [];
+  state.admin.wards = [];
+  state.admin.provinceName = '';
+  state.admin.districtName = '';
+  state.admin.wardName = '';
+  state.admin.locationId = '';
+}
+
 async function restoreHqFromSaved() {
   const data = state.data || {};
   const parsed = parseLocationIdClient(data.location_id);
-  if (parsed) {
+  const catalog = activeCatalog();
+  if (parsed && parsed.catalog === catalog) {
+    state.admin.staleLocation = false;
     state.admin.provinceCode = normCode(parsed.provinceCode);
     state.admin.districtCode = parsed.districtCode ? normCode(parsed.districtCode) : '';
     state.admin.wardCode = parsed.wardCode ? normCode(parsed.wardCode) : '';
     await loadAdminDistricts();
     await loadAdminWards();
     syncHqNames();
+  } else if (parsed) {
+    state.admin.staleLocation = true;
+    clearHqPickerCodes();
+  } else {
+    state.admin.staleLocation = false;
   }
   if (isEmptyVal(state.admin.streetLine) && data.diaChi) {
     state.admin.streetLine = parseStreetFromDiaChi(data.diaChi);
@@ -554,6 +625,8 @@ async function restoreHqFromSaved() {
 
 async function onHqProvinceChange() {
   const el = $('#hqProvince');
+  state.admin.staleLocation = false;
+  state.admin.signatoryFallback = false;
   state.admin.provinceCode = el ? el.value : '';
   state.admin.districtCode = '';
   state.admin.wardCode = '';
@@ -613,6 +686,10 @@ async function findDistrictForWard(provinceCode, wardCode) {
 }
 
 async function onHqBridgeClick() {
+  if (state.admin.catalog !== 'v2') {
+    toast('Chuyển đổi địa giới cũ chỉ dùng với danh mục v2.', 'error');
+    return;
+  }
   const legacyInput = $('#hqLegacyName');
   const legacyName = legacyInput ? legacyInput.value.trim() : '';
   if (!legacyName) {
@@ -630,6 +707,7 @@ async function onHqBridgeClick() {
     return;
   }
   const hit = hits[0];
+  state.admin.staleLocation = false;
   state.admin.provinceCode = normCode(hit.province_code);
   state.admin.wardCode = normCode(hit.code);
   state.admin.districtCode = '';
@@ -663,7 +741,9 @@ function setupHqPicker() {
     provinceName: '',
     districtName: '',
     wardName: '',
-    locationId: data.location_id || ''
+    locationId: data.location_id || '',
+    staleLocation: false,
+    signatoryFallback: false
   };
 
   const province = $('#hqProvince');
@@ -707,8 +787,31 @@ function currentValues() {
   const composed = composeHqAddress();
   if (composed) values.diaChi = composed;
   else if (state.data?.diaChi) values.diaChi = state.data.diaChi;
-  if (state.admin.locationId) values.location_id = state.admin.locationId;
+  const catalog = activeCatalog();
+  if (state.admin.locationId && locationIdMatchesCatalog(state.admin.locationId, catalog)) {
+    values.location_id = state.admin.locationId;
+  } else if (state.data?.location_id && !locationIdMatchesCatalog(state.data.location_id, catalog)) {
+    values.location_id = '';
+  }
   return values;
+}
+
+async function checkSignatoryFallback(locationId) {
+  if (!locationId || !locationIdMatchesCatalog(locationId, activeCatalog())) {
+    state.admin.signatoryFallback = false;
+    renderCatalogBanner();
+    return;
+  }
+  try {
+    const q = new URLSearchParams({ location_id: locationId });
+    const res = await fetch(`/api/admin/signatory-resolve?${q}`);
+    if (!res.ok) return;
+    const json = await res.json();
+    state.admin.signatoryFallback = !!json.usedFallback;
+    renderCatalogBanner();
+  } catch {
+    /* ignore */
+  }
 }
 
 function scheduleSave() {
@@ -729,6 +832,7 @@ async function save() {
   }
   const updated = await res.json();
   state.data = updated;
+  await checkSignatoryFallback(updated.location_id);
   updateBadges();
 }
 
@@ -845,6 +949,7 @@ async function doPrint() {
       return;
     }
     state.data = { ...state.data, ...currentValues() };
+    await checkSignatoryFallback(state.data.location_id);
     updateBadges();
     toast(`Đã tạo giấy chứng nhận — <a href="${json.url}" target="_blank" rel="noopener">mở PDF</a>`, 'ok');
     window.open(json.url, '_blank');
