@@ -1,15 +1,47 @@
 # Dependencies
 node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+yarn.lock
 
-# Generated PDFs
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build & Output
+dist/
+build/
 output/
+*.pdf
+!samples/**/*.pdf
 
-# Customer ID photos (keep folder structure, ignore images)
-customers/*/images/*.jpg
-customers/*/images/*.png
-customers/*/images/*.jpeg
+# Temporary files
+tmp/
+temp/
+*.tmp
 
-# Legacy / one-off experiment artifacts (not part of the app)
+# Logs
+logs/
+*.log
+
+# OS
+Thumbs.db
+.AppleDouble
+.LSOverride
+.worktrees/
+.superpowers/
+
+# Legacy / one-off experiment artifacts
 *.py
 clone-*
 test-*
@@ -18,27 +50,7 @@ extract-*
 compare-*
 analyze-*
 phoi-trang.*
-template-v2.html
-template-exact.html
-render-exact.js
-render-pdf.js
+template-*.html
+render-*.js
 pdf-layout.json
-DKKD_final.pdf
-DKKD_final_test.pdf
-DKKD_NguyenThiPhuong_final.pdf
-DKKD_NguyenThiPhuong_v2.pdf
-DKKD_NguyenThiPhuong.pdf
-clone-exact.pdf
-compare-exact.pdf
-compare-original.pdf
-
-# OS / IDE
-Thumbs.db
-Desktop.ini
-.vscode/
-.idea/
-
-# Superpowers / worktrees
-.worktrees/
-.superpowers/
-
+DKKD_*.pdf
